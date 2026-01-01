@@ -1,120 +1,208 @@
+# ============================================================
+# MBM Desktop-Only Build and Release Workflow
+# ============================================================
+# This workflow builds MBM for Linux and Windows desktop platforms.
+# Triggered on version tags (v*) to create GitHub releases.
+# Android/iOS/macOS platforms are NOT supported.
+# ============================================================
+
 name: Build and Release MBM
 
 on:
   push:
     tags:
-      - 'v*'  # Triggers on tags like v1.0.0, v1.0.1, etc.
+      - 'v*'  # Triggers on version tags: v1.0.0, v1.1.0, etc.
 
 permissions:
-  contents: write
+  contents: write  # Required to create GitHub releases
 
 jobs:
-  # ============================================
-  # WINDOWS BUILD
-  # ============================================
+  # ============================================================
+  # WINDOWS BUILD JOB
+  # Builds the Windows release executable
+  # ============================================================
   build-windows:
+    name: Build Windows Release
     runs-on: windows-latest
+    
     steps:
+      # Step 1: Checkout the repository code
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Step 2: Setup Flutter SDK with caching enabled
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
+          cache: true  # Cache Flutter SDK for faster builds
 
+      # Step 3: Cache pub dependencies for faster builds
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ${{ env.LOCALAPPDATA }}\Pub\Cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      # Step 4: Get Flutter dependencies
       - name: Install dependencies
         run: flutter pub get
 
+      # Step 5: Build Windows release executable
       - name: Build Windows Release
         run: flutter build windows --release
 
+      # Step 6: Create ZIP archive of the Windows build
+      # Output path: build/windows/x64/runner/Release/
       - name: Create Windows Archive
         run: |
           cd build/windows/x64/runner/Release
           Compress-Archive -Path * -DestinationPath ../../../../../MBM-Windows.zip
+        shell: pwsh
 
+      # Step 7: Upload the Windows artifact for use in release job
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-release
           path: build/MBM-Windows.zip
+          retention-days: 5
 
-  # ============================================
-  # LINUX BUILD
-  # ============================================
+  # ============================================================
+  # LINUX BUILD JOB
+  # Builds the Linux release bundle
+  # ============================================================
   build-linux:
+    name: Build Linux Release
     runs-on: ubuntu-latest
+    
     steps:
+      # Step 1: Checkout the repository code
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Step 2: Install Linux desktop build dependencies
+      # Required packages for GTK, secret storage, and compression
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            liblzma-dev \
+            libstdc++-12-dev \
+            libsecret-1-dev
 
+      # Step 3: Setup Flutter SDK with caching enabled
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
+          cache: true  # Cache Flutter SDK for faster builds
 
+      # Step 4: Cache pub dependencies for faster builds
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      # Step 5: Get Flutter dependencies
       - name: Install dependencies
         run: flutter pub get
 
+      # Step 6: Build Linux release bundle
       - name: Build Linux Release
         run: flutter build linux --release
 
+      # Step 7: Create tar.gz archive of the Linux build
+      # Output path: build/linux/x64/release/bundle/
       - name: Create Linux Archive
         run: |
           cd build/linux/x64/release/bundle
           tar -czvf ../../../../../MBM-Linux.tar.gz *
 
+      # Step 8: Upload the Linux artifact for use in release job
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-release
           path: build/MBM-Linux.tar.gz
+          retention-days: 5
 
-  # ============================================
-  # CREATE GITHUB RELEASE (Desktop Only)
-  # ============================================
+  # ============================================================
+  # CREATE GITHUB RELEASE JOB
+  # Downloads build artifacts and creates a GitHub release
+  # Runs only after both Windows and Linux builds succeed
+  # ============================================================
   create-release:
-    needs: [build-windows, build-linux]
+    name: Create GitHub Release
+    needs: [build-windows, build-linux]  # Wait for both builds
     runs-on: ubuntu-latest
+    
     steps:
+      # Step 1: Download Windows build artifact
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
           name: windows-release
           path: ./artifacts
 
+      # Step 2: Download Linux build artifact
       - name: Download Linux Artifact
         uses: actions/download-artifact@v4
         with:
           name: linux-release
           path: ./artifacts
 
+      # Step 3: List artifacts for verification (debugging)
+      - name: List artifacts
+        run: ls -la ./artifacts/
+
+      # Step 4: Create GitHub Release with both platform binaries
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: MBM ${{ github.ref_name }}
           body: |
-            ## MBM ${{ github.ref_name }}
+            ## MBM ${{ github.ref_name }} - Desktop Release
             
-            ### Desktop Downloads
-            - **Windows**: `MBM-Windows.zip` - Extract and run `mbm_app.exe`
-            - **Linux**: `MBM-Linux.tar.gz` - Extract and run `mbm_app`
+            ### 🖥️ Downloads
             
-            ### Installation Notes
-            - **Windows**: Extract the ZIP file and run `mbm_app.exe`
-            - **Linux**: Extract with `tar -xzvf MBM-Linux.tar.gz` and run `./mbm_app`
+            | Platform | File | Instructions |
+            |----------|------|--------------|
+            | **Windows** | `MBM-Windows.zip` | Extract and run `mbm_app.exe` |
+            | **Linux** | `MBM-Linux.tar.gz` | Extract and run `./mbm_app` |
+            
+            ### 📦 Installation
+            
+            **Windows:**
+            1. Download `MBM-Windows.zip`
+            2. Extract to your preferred location
+            3. Run `mbm_app.exe`
+            
+            **Linux:**
+            1. Download `MBM-Linux.tar.gz`
+            2. Extract: `tar -xzvf MBM-Linux.tar.gz`
+            3. Make executable: `chmod +x mbm_app`
+            4. Run: `./mbm_app`
+            
+            ---
+            *This is a desktop-only release. Android/iOS/macOS are not supported.*
           files: |
             artifacts/MBM-Windows.zip
             artifacts/MBM-Linux.tar.gz
           draft: false
           prerelease: false
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
