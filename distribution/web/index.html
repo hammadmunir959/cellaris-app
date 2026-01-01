@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download MBM Solutions</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f8fafc;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .header {
+            margin-top: 80px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #60a5fa, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .version {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+        .card-container {
+            display: flex;
+            gap: 2rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background-color: var(--surface);
+            padding: 2rem;
+            border-radius: 16px;
+            width: 250px;
+            text-align: center;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        .btn {
+            display: inline-block;
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 1rem;
+            width: 80%;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+        .meta {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        .instructions {
+            max-width: 600px;
+            margin-top: 4rem;
+            padding: 2rem;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>MBM Solutions</h1>
+        <div class="version">Latest Version: 1.0.0</div>
+        <p style="color: #cbd5e1;">Enterprise management simplified.</p>
+    </div>
+
+    <div class="card-container">
+        <!-- Windows -->
+        <div class="card">
+            <span class="icon">🪟</span>
+            <h2>Windows</h2>
+            <p style="color:#94a3b8">Windows 10/11 (64-bit)</p>
+            <a href="https://github.com/YOUR_USERNAME/mbm_app/releases/latest/download/MBM_Setup_Windows.exe" class="btn">Download .EXE</a>
+            <div class="meta">Installer (Automatic)</div>
+        </div>
+
+        <!-- Android -->
+        <div class="card">
+            <span class="icon">🤖</span>
+            <h2>Android</h2>
+            <p style="color:#94a3b8">Android 8.0+</p>
+            <a href="https://github.com/YOUR_USERNAME/mbm_app/releases/latest/download/app-release.apk" class="btn">Download .APK</a>
+            <div class="meta">Sideload Required</div>
+        </div>
+
+        <!-- Linux -->
+        <div class="card">
+            <span class="icon">🐧</span>
+            <h2>Linux</h2>
+            <p style="color:#94a3b8">Ubuntu, Fedora, etc.</p>
+            <a href="https://github.com/YOUR_USERNAME/mbm_app/releases/latest/download/MBM_Linux.AppImage" class="btn">Download AppImage</a>
+            <div class="meta">Portable Executable</div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h3>Installation Instructions</h3>
+        <ul>
+            <li><strong>Windows:</strong> Run the installer and verify the publisher "MBM Team".</li>
+            <li><strong>Android:</strong> You may need to enable "Install from Unknown Sources" in settings.</li>
+            <li><strong>Linux:</strong> After downloading, run <code>chmod +x MBM_Linux.AppImage</code> to make it executable.</li>
+        </ul>
+    </div>
+
+</body>
+</html>

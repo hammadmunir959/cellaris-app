@@ -1,0 +1,168 @@
+name: Build and Release MBM
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on tags like v1.0.0, v1.0.1, etc.
+
+permissions:
+  contents: write
+
+jobs:
+  # ============================================
+  # WINDOWS BUILD
+  # ============================================
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Create Windows Archive
+        run: |
+          cd build/windows/x64/runner/Release
+          Compress-Archive -Path * -DestinationPath ../../../../../MBM-Windows.zip
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: build/MBM-Windows.zip
+
+  # ============================================
+  # LINUX BUILD
+  # ============================================
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Linux Release
+        run: flutter build linux --release
+
+      - name: Create Linux Archive
+        run: |
+          cd build/linux/x64/release/bundle
+          tar -czvf ../../../../../MBM-Linux.tar.gz *
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: build/MBM-Linux.tar.gz
+
+  # ============================================
+  # ANDROID BUILD
+  # ============================================
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/MBM-Android.apk
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: build/MBM-Android.apk
+
+  # ============================================
+  # CREATE GITHUB RELEASE
+  # ============================================
+  create-release:
+    needs: [build-windows, build-linux, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: ./artifacts
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-release
+          path: ./artifacts
+
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release
+          path: ./artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MBM ${{ github.ref_name }}
+          body: |
+            ## MBM ${{ github.ref_name }}
+            
+            ### Downloads
+            - **Windows**: `MBM-Windows.zip` - Extract and run `mbm_app.exe`
+            - **Linux**: `MBM-Linux.tar.gz` - Extract and run `mbm_app`
+            - **Android**: `MBM-Android.apk` - Install on your Android device
+            
+            ### Installation Notes
+            - **Windows**: Extract the ZIP file and run `mbm_app.exe`
+            - **Linux**: Extract with `tar -xzvf MBM-Linux.tar.gz` and run `./mbm_app`
+            - **Android**: Enable "Unknown sources" in Settings → Security, then install the APK
+          files: |
+            artifacts/MBM-Windows.zip
+            artifacts/MBM-Linux.tar.gz
+            artifacts/MBM-Android.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
