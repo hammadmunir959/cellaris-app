@@ -51,12 +51,32 @@ class AuthService {
     }
   }
 
+
+
   /// Get current user ID
   String? get currentUserId {
     if (_isDesktop) {
       return _desktopAuth!.currentUser?.uid;
     } else {
       return _flutterAuth!.currentUser?.uid;
+    }
+  }
+
+  /// Get current user email
+  String? get currentUserEmail {
+    if (_isDesktop) {
+      return _desktopAuth!.currentUser?.email;
+    } else {
+      return _flutterAuth!.currentUser?.email;
+    }
+  }
+
+  /// Get current user display name
+  String? get currentUserName {
+    if (_isDesktop) {
+      return _desktopAuth!.currentUser?.displayName;
+    } else {
+      return _flutterAuth!.currentUser?.displayName;
     }
   }
 
@@ -217,6 +237,23 @@ class AuthService {
     } catch (e) {
       debugPrint('Error getting user: $e');
       return null;
+    }
+  }
+
+  /// Get user stream by UID (Real-time updates)
+  Stream<AppUser?> getUserStream(String uid) {
+    if (_isDesktop) {
+      // Desktop uses REST, so we must poll for "real-time" updates
+      // Poll every 5 seconds to simulate a stream
+      return Stream.periodic(const Duration(seconds: 5))
+          .asyncMap((_) => getUser(uid));
+    } else {
+      // Mobile/Web uses native Firestore streams
+      return _flutterFirestore!
+          .collection('users')
+          .doc(uid)
+          .snapshots()
+          .map((doc) => doc.exists ? AppUser.fromFirestore(doc) : null);
     }
   }
 

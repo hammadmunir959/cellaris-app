@@ -752,54 +752,132 @@ class _SubscriptionExpiredScreenState extends ConsumerState<SubscriptionExpiredS
         padding: const EdgeInsets.all(24),
         child: FadeIn(
           child: SizedBox(
-            width: 500,
+            width: 550,
             child: GlassCard(
               child: Padding(
                 padding: const EdgeInsets.all(40),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Pending verification icon
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
+                        color: Colors.amber.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(LucideIcons.checkCircle, size: 48, color: Colors.green),
+                      child: const Icon(LucideIcons.clock, size: 48, color: Colors.amber),
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'Payment Submitted!',
+                      'Pending Verification',
                       style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Your payment details have been submitted successfully.\nOur team will verify within 24 hours.',
+                      'Your payment details have been submitted successfully!\nOur team will verify within 24 hours.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                     const SizedBox(height: 32),
-                    // Payment summary
+                    
+                    // Payment summary card
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                       ),
                       child: Column(
                         children: [
+                          Row(
+                            children: [
+                              const Icon(LucideIcons.receipt, color: AppTheme.primaryColor, size: 18),
+                              const SizedBox(width: 10),
+                              const Text('Payment Summary', style: TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
                           _summaryRow('Package', _selectedPackage?.name ?? '-'),
                           _summaryRow('Amount', 'Rs. ${NumberFormat('#,###').format(_selectedPackage?.price ?? 0)}'),
                           _summaryRow('Transaction ID', _transactionIdController.text),
+                          _summaryRow('Your Account', _senderAccountController.text),
+                          _summaryRow('Paid To', _selectedPaymentAccount?.displayName ?? '-'),
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
-                    PrimaryButton(
-                      label: 'Check Verification Status',
-                      onPressed: _refreshStatus,
-                      icon: LucideIcons.refreshCw,
-                      width: double.infinity,
+                    
+                    // What happens next info
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(LucideIcons.info, color: Colors.blue, size: 18),
+                              SizedBox(width: 10),
+                              Text('What happens next?', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            '1. Our admin will review your payment details\n'
+                            '2. Once verified, your subscription will be activated\n'
+                            '3. You will gain full access to the app',
+                            style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.6),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    
+                    // Action buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: PrimaryButton(
+                            label: 'Check Status',
+                            onPressed: _refreshStatus,
+                            icon: LucideIcons.refreshCw,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _submitSuccess = false;
+                                _currentStep = 1; // Go back to payment form
+                              });
+                            },
+                            icon: const Icon(LucideIcons.edit, size: 18),
+                            label: const Text('Edit Details'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.5)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Logout button
+                    TextButton.icon(
+                      onPressed: () async {
+                        await ref.read(authControllerProvider.notifier).logout();
+                        if (mounted) context.go('/login');
+                      },
+                      icon: const Icon(LucideIcons.logOut, size: 16),
+                      label: const Text('Logout'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.grey),
                     ),
                   ],
                 ),
@@ -1055,22 +1133,27 @@ class _SubscriptionExpiredScreenState extends ConsumerState<SubscriptionExpiredS
             const SizedBox(height: 16),
             
             // Price
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'Rs. ${NumberFormat('#,###').format(package.price)}',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? AppTheme.primaryColor : null,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Rs. ${NumberFormat('#,###').format(package.price)}',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? AppTheme.primaryColor : null,
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4, left: 4),
-                  child: Text(package.durationLabel, style: const TextStyle(color: Colors.grey)),
-                ),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2, left: 4),
+                    child: Text(package.durationLabel, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             

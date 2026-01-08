@@ -17,6 +17,7 @@ import 'package:cellaris/features/auth/view/registration_screen.dart';
 import 'package:cellaris/features/auth/view/forgot_password_screen.dart';
 import 'package:cellaris/features/auth/view/subscription_expired_screen.dart';
 import 'package:cellaris/features/auth/view/connection_error_screen.dart';
+import 'package:cellaris/features/auth/view/subscription_guard.dart';
 import 'package:cellaris/features/auth/controller/auth_controller.dart';
 import 'package:cellaris/features/accounts/view/accounts_screen.dart';
 import 'package:cellaris/features/stock/view/stock_issuance_screen.dart';
@@ -24,6 +25,25 @@ import 'package:cellaris/features/stock/view/unit_tracking_view.dart';
 import 'package:cellaris/features/purchase_return/view/purchase_return_screen.dart';
 import 'package:cellaris/features/transactions/view/transactions_history_screen.dart';
 import 'package:cellaris/main.dart';
+import 'package:cellaris/core/models/user_model.dart';
+
+/// Helper function to determine if user can access the main app
+/// ONLY allow: active status OR trial status with valid (not expired) subscription
+bool _canUserAccessApp(AppUser user) {
+  // Active users can access
+  if (user.status == UserStatus.active) {
+    // Also check if subscription date is still valid
+    return user.subscriptionExpiry.isAfter(DateTime.now());
+  }
+  
+  // Trial users can access ONLY if trial hasn't expired
+  if (user.status == UserStatus.trial) {
+    return user.subscriptionExpiry.isAfter(DateTime.now());
+  }
+  
+  // All other statuses (pending, pendingVerification, expired, canceled, blocked) -> NO ACCESS
+  return false;
+}
 
 /// App router configuration with authentication guards
 /// Handles both online (Firebase) and offline (demo) modes
@@ -54,8 +74,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
       
       final isAuthenticated = authState?.isAuthenticated ?? false;
-      final isSubscriptionValid = authState?.isSubscriptionValid ?? false;
       final isInitialized = authState?.isInitialized ?? false;
+      final user = authState?.user;
       
       // Auth routes that don't require authentication
       final authRoutes = ['/login', '/register', '/forgot-password'];
@@ -71,19 +91,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
       
-      // Authenticated but on auth route -> redirect appropriately
-      if (isAuthenticated && isAuthRoute) {
-        return isSubscriptionValid ? '/dashboard' : '/subscription-expired';
+      // Authenticated but on auth route -> check if can access app
+      if (isAuthenticated && isAuthRoute && user != null) {
+        final canAccessApp = _canUserAccessApp(user);
+        return canAccessApp ? '/dashboard' : '/subscription-expired';
       }
       
-      // Authenticated but subscription expired
-      if (isAuthenticated && !isSubscriptionValid && location != '/subscription-expired') {
-        return '/subscription-expired';
-      }
-      
-      // Subscription valid but on expired page -> redirect to dashboard
-      if (isAuthenticated && isSubscriptionValid && location == '/subscription-expired') {
-        return '/dashboard';
+      // Authenticated user - check if they can access the app
+      if (isAuthenticated && user != null && !isAuthRoute) {
+        final canAccessApp = _canUserAccessApp(user);
+        
+        // Block users who cannot access app
+        if (!canAccessApp && location != '/subscription-expired') {
+          return '/subscription-expired';
+        }
+        
+        // User can access but is on subscription page -> redirect to dashboard
+        if (canAccessApp && location == '/subscription-expired') {
+          return '/dashboard';
+        }
       }
       
       return null; // No redirect needed
@@ -124,7 +150,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // ==========================================
       ShellRoute(
         builder: (context, state, child) {
-          return AppLayout(child: child);
+          // Wrap with SubscriptionGuard to auto-redirect if status becomes invalid
+          return SubscriptionGuard(
+            child: AppLayout(child: child),
+          );
         },
         routes: [
           // Dashboard

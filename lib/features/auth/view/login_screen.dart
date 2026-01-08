@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cellaris/core/theme/app_theme.dart';
 import 'package:cellaris/core/widgets/glass_card.dart';
 import 'package:cellaris/core/widgets/primary_button.dart';
+import 'package:cellaris/core/services/remember_me_service.dart';
 import '../controller/auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -24,6 +25,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordFocus = FocusNode();
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _isLoadingRemembered = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedEmail();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    final rememberMeService = ref.read(rememberMeServiceProvider);
+    final isEnabled = await rememberMeService.isRememberMeEnabled();
+    final email = await rememberMeService.getRememberedEmail();
+    
+    if (mounted) {
+      setState(() {
+        _rememberMe = isEnabled;
+        if (email != null && email.isNotEmpty) {
+          _emailController.text = email;
+        }
+        _isLoadingRemembered = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -37,17 +61,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     
+    final email = _emailController.text.trim();
+    
     final success = await ref.read(authControllerProvider.notifier).login(
-      _emailController.text.trim(),
+      email,
       _passwordController.text,
     );
     
-    if (success && mounted) {
-      final authState = ref.read(authControllerProvider);
-      if (authState.isSubscriptionValid) {
-        context.go('/dashboard');
+    if (success) {
+      // Save or clear remembered email based on checkbox
+      final rememberMeService = ref.read(rememberMeServiceProvider);
+      if (_rememberMe) {
+        await rememberMeService.rememberUser(email);
       } else {
-        context.go('/subscription-expired');
+        await rememberMeService.forgetUser();
+      }
+      
+      if (mounted) {
+        final authState = ref.read(authControllerProvider);
+        if (authState.isSubscriptionValid) {
+          context.go('/dashboard');
+        } else {
+          context.go('/subscription-expired');
+        }
       }
     }
   }

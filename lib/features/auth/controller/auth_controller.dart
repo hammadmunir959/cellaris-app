@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/models/user_model.dart';
@@ -54,6 +56,9 @@ class AuthController extends StateNotifier<AuthState> {
   
   // Flag to prevent auth state listener from interfering during active login/register
   bool _isAuthenticating = false;
+  
+  // Real-time user stream subscription
+  StreamSubscription<AppUser?>? _userSubscription;
 
   AuthController(this._authService, this._subscriptionService) : super(const AuthState()) {
     _initialize();
@@ -92,48 +97,118 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  /// Load user data and subscription status
+  /// Load user data and subscribe to real-time updates
   Future<void> _loadUser(String uid) async {
+    // Cancel existing subscription if any
+    await _userSubscription?.cancel();
+    _userSubscription = null;
+    
     try {
-      // First try to get user from Firestore
+      // First try to get initial data
       final user = await _authService.getUser(uid);
       
       if (user != null) {
-        // Sync subscription from Firebase (updates local storage)
-        await _subscriptionService.syncFromFirebase(uid);
+        _updateUserState(user);
         
-        // Check subscription validity
-        final isValid = await _subscriptionService.isSubscriptionValid();
-        
-        state = state.copyWith(
-          user: user,
-          isSubscriptionValid: isValid,
-          isLoading: false,
-          isInitialized: true,
-          error: null,
+        // Listen to real-time updates
+        _userSubscription = _authService.getUserStream(uid).listen(
+          (updatedUser) {
+            if (updatedUser != null) {
+              _updateUserState(updatedUser);
+            } else {
+              // User deleted or permission denied
+              state = state.copyWith(error: 'User data not found');
+            }
+          },
+          onError: (e) {
+            debugPrint('AuthController: User stream error: $e');
+            // Don't change state on stream error, keep last known good state
+          },
         );
       } else {
-        // User document not found - only show error if not actively authenticating
         if (!_isAuthenticating) {
           state = state.copyWith(
             isLoading: false,
             isInitialized: true,
-            error: 'User data not found',
+            error: 'User document not found',
           );
         }
       }
+
     } catch (e) {
-      // Network error - try local subscription check (only if not actively authenticating)
+      // Network error - try to recover using local storage
       if (!_isAuthenticating) {
-        final isValid = await _subscriptionService.isSubscriptionValid();
-        state = state.copyWith(
-          isLoading: false,
-          isInitialized: true,
-          isSubscriptionValid: isValid,
-          error: 'Offline mode - using cached data',
-        );
+        debugPrint('AuthController: Network error ($e), attempting offline recovery...');
+        
+        try {
+          // Get secure local data (Status + Expiry)
+          final localData = await _subscriptionService.getLocalData();
+          
+          if (localData != null) {
+            // Reconstruct user from cached auth data + secure local storage
+            final offlineUser = AppUser(
+              id: uid,
+              email: _authService.currentUserEmail ?? 'offline@cellaris.app',
+              name: _authService.currentUserName ?? 'Offline User',
+              role: UserRole.salesProfessional, // Default role for offline
+              status: localData.status,
+              subscriptionExpiry: localData.expiry,
+              createdAt: DateTime.now(), // Placeholder
+              lastLoginAt: DateTime.now(),
+            );
+            
+            // Check access based on recovered data
+            final canAccess = (offlineUser.status == UserStatus.active || 
+                             offlineUser.status == UserStatus.trial) &&
+                             offlineUser.subscriptionExpiry.isAfter(DateTime.now());
+            
+            state = state.copyWith(
+              user: offlineUser,
+              isSubscriptionValid: canAccess,
+              isLoading: false,
+              isInitialized: true,
+              error: 'Offline Mode - Functionality may be limited',
+            );
+            
+            debugPrint('AuthController: Recovered offline user - Status: ${offlineUser.status.name}, Access: $canAccess');
+          } else {
+            // No local data found
+            state = state.copyWith(
+              isLoading: false,
+              isInitialized: true,
+              error: 'Connection failed and no local data found',
+            );
+          }
+        } catch (localError) {
+          debugPrint('AuthController: Offline recovery failed: $localError');
+          state = state.copyWith(
+            isLoading: false,
+            isInitialized: true,
+            error: 'Connection error',
+          );
+        }
       }
     }
+  }
+
+  /// Helper to update state from user object
+  Future<void> _updateUserState(AppUser user) async {
+    // Sync subscription details
+    await _subscriptionService.syncFromFirebase(user.id);
+    
+    // Check access rights
+    final canAccess = (user.status == UserStatus.active || user.status == UserStatus.trial) &&
+        user.subscriptionExpiry.isAfter(DateTime.now());
+        
+    state = state.copyWith(
+      user: user,
+      isSubscriptionValid: canAccess,
+      isLoading: false,
+      isInitialized: true,
+      error: null,
+    );
+    
+    debugPrint('AuthController: User updated - Status: ${user.status.name}, Access: $canAccess');
   }
 
   /// Login with email and password
@@ -202,9 +277,17 @@ class AuthController extends StateNotifier<AuthState> {
 
   /// Logout and clear local data
   Future<void> logout() async {
+    await _userSubscription?.cancel();
+    _userSubscription = null;
     await _authService.logout();
     await _subscriptionService.clearLocal();
     state = const AuthState(isInitialized: true);
+  }
+  
+  @override
+  void dispose() {
+    _userSubscription?.cancel();
+    super.dispose();
   }
 
   /// Request password reset email
@@ -224,17 +307,35 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  /// Refresh subscription status from Firebase
+  /// Refresh user data and subscription status from Firebase
+  /// This reloads the full user document including status changes
   Future<void> refreshSubscription() async {
     if (state.user == null) return;
     
     try {
-      await _subscriptionService.syncFromFirebase(state.user!.id);
-      final isValid = await _subscriptionService.isSubscriptionValid();
+      final uid = state.user!.id;
       
-      state = state.copyWith(isSubscriptionValid: isValid);
+      // Reload full user data from Firebase
+      final user = await _authService.getUser(uid);
+      
+      if (user != null) {
+        // Sync subscription from Firebase
+        await _subscriptionService.syncFromFirebase(uid);
+        final isValid = await _subscriptionService.isSubscriptionValid();
+        
+        // Check if user can still access the app
+        final canAccess = (user.status == UserStatus.active || user.status == UserStatus.trial) &&
+            user.subscriptionExpiry.isAfter(DateTime.now());
+        
+        state = state.copyWith(
+          user: user,
+          isSubscriptionValid: canAccess,
+        );
+        
+        debugPrint('AuthController: Refreshed user - Status: ${user.status.name}, CanAccess: $canAccess');
+      }
     } catch (e) {
-      print('AuthController: Failed to refresh subscription: $e');
+      debugPrint('AuthController: Failed to refresh subscription: $e');
     }
   }
 

@@ -3,7 +3,9 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/user_model.dart';
 
 // Platform-specific imports
 import 'package:cloud_firestore/cloud_firestore.dart' as flutter_firestore;
@@ -67,26 +69,36 @@ class SubscriptionService {
 
   encrypt.IV get _iv => encrypt.IV.fromUtf8(_ivString);
 
-  /// Save subscription expiry to secure local storage (encrypted)
-  Future<void> saveLocalExpiry(DateTime expiry) async {
+  /// Save subscription details to secure local storage
+  Future<void> saveLocalData({
+    required DateTime expiry, 
+    required UserStatus status,
+  }) async {
     try {
       final data = {
         'expiry': expiry.toIso8601String(),
+        'status': status.name,
         'timestamp': DateTime.now().toIso8601String(),
-        'checksum': _generateChecksum(expiry),
+        'checksum': _generateChecksum(expiry, status.name),
       };
       
       final jsonString = jsonEncode(data);
       final encrypted = _encrypter.encrypt(jsonString, iv: _iv);
       
       await _storage.write(key: _storageKey, value: encrypted.base64);
+      debugPrint('SubscriptionService: Saved local data - Status: ${status.name}, Expiry: $expiry');
     } catch (e) {
-      debugPrint('SubscriptionService: Error saving local expiry: $e');
+      debugPrint('SubscriptionService: Error saving local data: $e');
     }
   }
 
-  /// Get subscription expiry from secure local storage
-  Future<DateTime?> getLocalExpiry() async {
+  /// Supported for backward compatibility - assumes active status if saving just expiry
+  Future<void> saveLocalExpiry(DateTime expiry) async {
+    await saveLocalData(expiry: expiry, status: UserStatus.active);
+  }
+
+  /// Get local subscription data
+  Future<({DateTime expiry, UserStatus status})?> getLocalData() async {
     try {
       final encryptedData = await _storage.read(key: _storageKey);
       if (encryptedData == null) return null;
@@ -94,25 +106,54 @@ class SubscriptionService {
       final decrypted = _encrypter.decrypt64(encryptedData, iv: _iv);
       final data = jsonDecode(decrypted) as Map<String, dynamic>;
       
+      if (!data.containsKey('expiry')) return null;
+      
       final expiry = DateTime.parse(data['expiry']);
       final storedChecksum = data['checksum'] as String;
       
-      // Verify checksum to detect tampering
-      if (storedChecksum != _generateChecksum(expiry)) {
-        debugPrint('SubscriptionService: Checksum mismatch - data may be tampered');
-        await clearLocal();
-        return null;
+      // Handle status (default to active for legacy data)
+      final statusStr = data['status'] as String? ?? 'active';
+      UserStatus status;
+      try {
+        status = UserStatus.values.firstWhere(
+          (e) => e.name == statusStr, 
+          orElse: () => UserStatus.expired
+        );
+      } catch (_) {
+        status = UserStatus.expired;
       }
       
-      return expiry;
+      // Verify checksum
+      if (storedChecksum != _generateChecksum(expiry, statusStr)) {
+        // Fallback for legacy checksums (expiry only)
+         if (storedChecksum != _generateChecksumLegacy(expiry)) {
+           debugPrint('SubscriptionService: Checksum mismatch - data may be tampered');
+           await clearLocal();
+           return null;
+         }
+      }
+      
+      return (expiry: expiry, status: status);
     } catch (e) {
-      debugPrint('SubscriptionService: Error reading local expiry: $e');
+      debugPrint('SubscriptionService: Error reading local data: $e');
       return null;
     }
   }
 
-  /// Generate checksum for tamper detection
-  String _generateChecksum(DateTime expiry) {
+  /// Get subscription expiry from secure local storage
+  Future<DateTime?> getLocalExpiry() async {
+    final data = await getLocalData();
+    return data?.expiry;
+  }
+
+  /// Generate checksum for tampering detection
+  String _generateChecksum(DateTime expiry, String status) {
+    final data = '${expiry.toIso8601String()}_${status}_$_checksumSalt';
+    final bytes = utf8.encode(data);
+    return base64Encode(bytes).substring(0, 24);
+  }
+  
+  String _generateChecksumLegacy(DateTime expiry) {
     final data = '${expiry.toIso8601String()}_$_checksumSalt';
     final bytes = utf8.encode(data);
     return base64Encode(bytes).substring(0, 24);
@@ -176,8 +217,18 @@ class SubscriptionService {
       }
       
       if (expiry != null) {
-        await saveLocalExpiry(expiry);
-        debugPrint('SubscriptionService: Synced expiry from Firebase: $expiry');
+        // Extract status
+        final statusStr = data['status'] as String? ?? 'active';
+        final status = UserStatus.values.firstWhere(
+          (e) => e.firestoreValue == statusStr,
+          orElse: () => UserStatus.values.firstWhere(
+            (e) => e.name == statusStr,
+            orElse: () => UserStatus.expired
+          ),
+        );
+
+        await saveLocalData(expiry: expiry, status: status);
+        debugPrint('SubscriptionService: Synced from Firebase: $status, Exp: $expiry');
       }
       
       return expiry;
