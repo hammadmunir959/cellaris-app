@@ -39,6 +39,7 @@ class AppUser {
   final String? locationId;
   final DateTime createdAt;
   final DateTime? lastLoginAt;
+  final Map<String, dynamic>? paymentDetails;
 
   AppUser({
     required this.id,
@@ -52,6 +53,7 @@ class AppUser {
     this.locationId,
     required this.createdAt,
     this.lastLoginAt,
+    this.paymentDetails,
   });
 
   /// Check if subscription is currently valid
@@ -98,6 +100,9 @@ class AppUser {
       locationId: data['locationId'],
       createdAt: _parseDateTime(data['createdAt']) ?? DateTime.now(),
       lastLoginAt: _parseDateTime(data['lastLoginAt']),
+      paymentDetails: data['payment'] != null 
+          ? Map<String, dynamic>.from(data['payment']) 
+          : null,
     );
   }
 
@@ -123,6 +128,7 @@ class AppUser {
         'createdAt': Timestamp.fromDate(createdAt),
         'lastLoginAt':
             lastLoginAt != null ? Timestamp.fromDate(lastLoginAt!) : null,
+        if (paymentDetails != null) 'payment': paymentDetails,
       };
 
   /// Create a copy with modified fields
@@ -135,6 +141,7 @@ class AppUser {
     String? companyId,
     String? locationId,
     DateTime? lastLoginAt,
+    Map<String, dynamic>? paymentDetails,
   }) {
     return AppUser(
       id: id,
@@ -148,6 +155,7 @@ class AppUser {
       locationId: locationId ?? this.locationId,
       createdAt: createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      paymentDetails: paymentDetails ?? this.paymentDetails,
     );
   }
 

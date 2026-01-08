@@ -14,67 +14,8 @@ class ProductNotifier extends StateNotifier<List<Product>> {
 
   Future<void> _init() async {
     final persisted = await _repository.getProducts();
-    if (persisted.isEmpty) {
-      // Seed initial data for demo/first run
-      for (final p in _initialProducts) {
-        await _repository.saveProduct(p.toPersistence(synced: true));
-      }
-      state = _initialProducts;
-    } else {
-      state = persisted.map((p) => p.toDomain()).toList();
-    }
+    state = persisted.map((p) => p.toDomain()).toList();
   }
-
-  static final List<Product> _initialProducts = [
-    Product(
-      id: '1',
-      name: 'iPhone 15 Pro Max',
-      sku: 'IP15PM-256-BLU',
-      brand: 'Apple',
-      category: 'Smartphones',
-      purchasePrice: 400000,
-      sellingPrice: 450000,
-      stock: 24,
-      variant: '256GB - Blue Titanium',
-      lowStockThreshold: 10,
-    ),
-    Product(
-      id: '2',
-      name: 'Samsung S24 Ultra',
-      sku: 'S24U-512-GRY',
-      brand: 'Samsung',
-      category: 'Smartphones',
-      purchasePrice: 350000,
-      sellingPrice: 390000,
-      stock: 12,
-      variant: '512GB - Titanium Gray',
-      lowStockThreshold: 10,
-    ),
-    Product(
-      id: '3',
-      name: 'Google Pixel 8 Pro',
-      sku: 'PX8P-128-BLK',
-      brand: 'Google',
-      category: 'Smartphones',
-      purchasePrice: 200000,
-      sellingPrice: 230000,
-      stock: 5,
-      variant: '128GB - Obsidian',
-      lowStockThreshold: 15,
-    ),
-    Product(
-      id: '4',
-      name: 'iPad Air M2',
-      sku: 'IPAM2-128-PUR',
-      brand: 'Apple',
-      category: 'Tablets',
-      purchasePrice: 150000,
-      sellingPrice: 175000,
-      stock: 3,
-      variant: '128GB - Purple',
-      lowStockThreshold: 5,
-    ),
-  ];
 
   Future<void> addProduct(Product product) async {
     // UI Update (Optimistic)

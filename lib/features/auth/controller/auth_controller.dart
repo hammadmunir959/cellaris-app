@@ -51,6 +51,9 @@ class AuthState {
 class AuthController extends StateNotifier<AuthState> {
   final AuthService _authService;
   final SubscriptionService _subscriptionService;
+  
+  // Flag to prevent auth state listener from interfering during active login/register
+  bool _isAuthenticating = false;
 
   AuthController(this._authService, this._subscriptionService) : super(const AuthState()) {
     _initialize();
@@ -64,6 +67,9 @@ class AuthController extends StateNotifier<AuthState> {
     // Note: authStateChanges returns dynamic because it can be
     // either firebase_auth.User or firebase_dart.User depending on platform
     _authService.authStateChanges.listen((user) async {
+      // Skip if we're actively authenticating (login/register in progress)
+      if (_isAuthenticating) return;
+      
       if (user != null) {
         // Get UID from either FlutterFire User or firebase_dart User
         final uid = user.uid as String?;
@@ -107,27 +113,32 @@ class AuthController extends StateNotifier<AuthState> {
           error: null,
         );
       } else {
-        // User document not found - might need to create it
+        // User document not found - only show error if not actively authenticating
+        if (!_isAuthenticating) {
+          state = state.copyWith(
+            isLoading: false,
+            isInitialized: true,
+            error: 'User data not found',
+          );
+        }
+      }
+    } catch (e) {
+      // Network error - try local subscription check (only if not actively authenticating)
+      if (!_isAuthenticating) {
+        final isValid = await _subscriptionService.isSubscriptionValid();
         state = state.copyWith(
           isLoading: false,
           isInitialized: true,
-          error: 'User data not found',
+          isSubscriptionValid: isValid,
+          error: 'Offline mode - using cached data',
         );
       }
-    } catch (e) {
-      // Network error - try local subscription check
-      final isValid = await _subscriptionService.isSubscriptionValid();
-      state = state.copyWith(
-        isLoading: false,
-        isInitialized: true,
-        isSubscriptionValid: isValid,
-        error: 'Offline mode - using cached data',
-      );
     }
   }
 
   /// Login with email and password
   Future<bool> login(String email, String password) async {
+    _isAuthenticating = true;
     state = state.copyWith(isLoading: true, error: null);
     
     try {
@@ -143,8 +154,10 @@ class AuthController extends StateNotifier<AuthState> {
         error: null,
       );
       
+      _isAuthenticating = false;
       return true;
     } catch (e) {
+      _isAuthenticating = false;
       state = state.copyWith(
         isLoading: false,
         error: e.toString().replaceAll('Exception: ', ''),
@@ -155,6 +168,7 @@ class AuthController extends StateNotifier<AuthState> {
 
   /// Register a new user
   Future<bool> register(String email, String password, String name) async {
+    _isAuthenticating = true;
     state = state.copyWith(isLoading: true, error: null);
     
     try {
@@ -174,8 +188,10 @@ class AuthController extends StateNotifier<AuthState> {
         error: null,
       );
       
+      _isAuthenticating = false;
       return true;
     } catch (e) {
+      _isAuthenticating = false;
       state = state.copyWith(
         isLoading: false,
         error: e.toString().replaceAll('Exception: ', ''),

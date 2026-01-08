@@ -13,20 +13,8 @@ class CustomerNotifier extends StateNotifier<List<Customer>> {
 
   Future<void> _init() async {
     final persisted = await _repository.getCustomers();
-    if (persisted.isEmpty) {
-      for (final c in _initialCustomers) {
-        await _repository.saveCustomer(c.toPersistence(synced: true));
-      }
-      state = _initialCustomers;
-    } else {
-      state = persisted.map((c) => c.toDomain()).toList();
-    }
+    state = persisted.map((c) => c.toDomain()).toList();
   }
-
-  static final List<Customer> _initialCustomers = [
-    Customer(id: '1', name: 'Hammad Munir', contact: '0300-1234567', email: 'hammad@example.com'),
-    Customer(id: '2', name: 'Sara Khan', contact: '0321-7654321', balance: -500),
-  ];
 
   Future<void> addCustomer(Customer customer) async {
     state = [...state, customer];
