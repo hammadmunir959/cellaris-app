@@ -234,7 +234,7 @@ const ProductPersistenceSchema = CollectionSchema(
   getId: _productPersistenceGetId,
   getLinks: _productPersistenceGetLinks,
   attach: _productPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _productPersistenceEstimateSize(
@@ -4692,7 +4692,7 @@ const StockEntryPersistenceSchema = CollectionSchema(
   getId: _stockEntryPersistenceGetId,
   getLinks: _stockEntryPersistenceGetLinks,
   attach: _stockEntryPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _stockEntryPersistenceEstimateSize(
@@ -8823,7 +8823,7 @@ const CustomerPersistenceSchema = CollectionSchema(
   getId: _customerPersistenceGetId,
   getLinks: _customerPersistenceGetLinks,
   attach: _customerPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _customerPersistenceEstimateSize(
@@ -12784,7 +12784,7 @@ const SaleDraftPersistenceSchema = CollectionSchema(
   getId: _saleDraftPersistenceGetId,
   getLinks: _saleDraftPersistenceGetLinks,
   attach: _saleDraftPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _saleDraftPersistenceEstimateSize(
@@ -15223,7 +15223,7 @@ const SupplierPersistenceSchema = CollectionSchema(
   getId: _supplierPersistenceGetId,
   getLinks: _supplierPersistenceGetLinks,
   attach: _supplierPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _supplierPersistenceEstimateSize(
@@ -19733,7 +19733,7 @@ const PurchaseOrderPersistenceSchema = CollectionSchema(
   getId: _purchaseOrderPersistenceGetId,
   getLinks: _purchaseOrderPersistenceGetLinks,
   attach: _purchaseOrderPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _purchaseOrderPersistenceEstimateSize(
@@ -22027,7 +22027,7 @@ const AccountGroupPersistenceSchema = CollectionSchema(
   getId: _accountGroupPersistenceGetId,
   getLinks: _accountGroupPersistenceGetLinks,
   attach: _accountGroupPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _accountGroupPersistenceEstimateSize(
@@ -23458,7 +23458,7 @@ const AccountPersistenceSchema = CollectionSchema(
   getId: _accountPersistenceGetId,
   getLinks: _accountPersistenceGetLinks,
   attach: _accountPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _accountPersistenceEstimateSize(
@@ -25531,7 +25531,7 @@ const UnitPersistenceSchema = CollectionSchema(
   getId: _unitPersistenceGetId,
   getLinks: _unitPersistenceGetLinks,
   attach: _unitPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _unitPersistenceEstimateSize(
@@ -29077,7 +29077,7 @@ const VoucherPersistenceSchema = CollectionSchema(
   getId: _voucherPersistenceGetId,
   getLinks: _voucherPersistenceGetLinks,
   attach: _voucherPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _voucherPersistenceEstimateSize(
@@ -32096,7 +32096,7 @@ const LedgerEntryPersistenceSchema = CollectionSchema(
   getId: _ledgerEntryPersistenceGetId,
   getLinks: _ledgerEntryPersistenceGetLinks,
   attach: _ledgerEntryPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _ledgerEntryPersistenceEstimateSize(
@@ -35398,7 +35398,7 @@ const InvoicePersistenceSchema = CollectionSchema(
   getId: _invoicePersistenceGetId,
   getLinks: _invoicePersistenceGetLinks,
   attach: _invoicePersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _invoicePersistenceEstimateSize(
@@ -40809,7 +40809,7 @@ const InvoiceLineItemPersistenceSchema = CollectionSchema(
   getId: _invoiceLineItemPersistenceGetId,
   getLinks: _invoiceLineItemPersistenceGetLinks,
   attach: _invoiceLineItemPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _invoiceLineItemPersistenceEstimateSize(
@@ -44025,7 +44025,7 @@ const CompanyPersistenceSchema = CollectionSchema(
   getId: _companyPersistenceGetId,
   getLinks: _companyPersistenceGetLinks,
   attach: _companyPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _companyPersistenceEstimateSize(
@@ -46649,7 +46649,7 @@ const LocationPersistenceSchema = CollectionSchema(
   getId: _locationPersistenceGetId,
   getLinks: _locationPersistenceGetLinks,
   attach: _locationPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _locationPersistenceEstimateSize(
@@ -48986,7 +48986,7 @@ const SalesmanPersistenceSchema = CollectionSchema(
   getId: _salesmanPersistenceGetId,
   getLinks: _salesmanPersistenceGetLinks,
   attach: _salesmanPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _salesmanPersistenceEstimateSize(
@@ -51095,7 +51095,7 @@ const RepairTicketPersistenceSchema = CollectionSchema(
   getId: _repairTicketPersistenceGetId,
   getLinks: _repairTicketPersistenceGetLinks,
   attach: _repairTicketPersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _repairTicketPersistenceEstimateSize(

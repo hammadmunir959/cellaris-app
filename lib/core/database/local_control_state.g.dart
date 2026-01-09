@@ -114,7 +114,7 @@ const LocalControlStatePersistenceSchema = CollectionSchema(
   getId: _localControlStatePersistenceGetId,
   getLinks: _localControlStatePersistenceGetLinks,
   attach: _localControlStatePersistenceAttach,
-  version: '3.1.0+1',
+  version: '3.2.1',
 );
 
 int _localControlStatePersistenceEstimateSize(
